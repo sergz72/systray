@@ -104,3 +104,7 @@ func systray_on_exit() {
 func systray_menu_item_selected(cID C.int) {
 	systrayMenuItemSelected(uint32(cID))
 }
+
+func clean() {
+	C.remove_all_items()
+}

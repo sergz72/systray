@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <libappindicator/app-indicator.h>
+#include <libnotify/notify.h>
 #include "systray.h"
 
 static AppIndicator *global_app_indicator;
@@ -26,12 +27,18 @@ typedef struct {
 	short isCheckable;
 } MenuItemInfo;
 
+typedef struct {
+  char *title;
+  char *text;
+} InfoData;
+
 void registerSystray(void) {
 	gtk_init(0, NULL);
 	global_app_indicator = app_indicator_new("systray", "", APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
 	app_indicator_set_status(global_app_indicator, APP_INDICATOR_STATUS_ACTIVE);
 	global_tray_menu = gtk_menu_new();
 	app_indicator_set_menu(global_app_indicator, GTK_MENU(global_tray_menu));
+	notify_init("systray");
 	systray_ready();
 }
 
@@ -181,11 +188,11 @@ gboolean do_add_separator(gpointer data) {
 
 // runs in main thread, should always return FALSE to prevent gtk to execute it again
 gboolean do_hide_menu_item(gpointer data) {
-	MenuItemInfo *mii = (MenuItemInfo*)data;
+	int menu_id = (int)(long long)data;
 	GList* it;
 	for(it = global_menu_items; it != NULL; it = it->next) {
 		MenuItemNode* item = (MenuItemNode*)(it->data);
-		if(item->menu_id == mii->menu_id){
+		if(item->menu_id == menu_id){
 			gtk_widget_hide(GTK_WIDGET(item->menu_item));
 			break;
 		}
@@ -195,11 +202,11 @@ gboolean do_hide_menu_item(gpointer data) {
 
 // runs in main thread, should always return FALSE to prevent gtk to execute it again
 gboolean do_show_menu_item(gpointer data) {
-	MenuItemInfo *mii = (MenuItemInfo*)data;
+	int menu_id = (int)(long long)data;
 	GList* it;
 	for(it = global_menu_items; it != NULL; it = it->next) {
 		MenuItemNode* item = (MenuItemNode*)(it->data);
-		if(item->menu_id == mii->menu_id){
+		if(item->menu_id == menu_id){
 			gtk_widget_show(GTK_WIDGET(item->menu_item));
 			break;
 		}
@@ -212,6 +219,7 @@ gboolean do_quit(gpointer data) {
 	_unlink_temp_file();
 	// app indicator doesn't provide a way to remove it, hide it as a workaround
 	app_indicator_set_status(global_app_indicator, APP_INDICATOR_STATUS_PASSIVE);
+	notify_uninit();
 	gtk_main_quit();
 	return FALSE;
 }
@@ -246,23 +254,58 @@ void add_or_update_menu_item(int menu_id, int parent_menu_id, char* title, char*
 }
 
 void add_separator(int menu_id) {
-	MenuItemInfo *mii = malloc(sizeof(MenuItemInfo));
-	mii->menu_id = menu_id;
-	g_idle_add(do_add_separator, mii);
+	g_idle_add(do_add_separator, NULL);
 }
 
 void hide_menu_item(int menu_id) {
-	MenuItemInfo *mii = malloc(sizeof(MenuItemInfo));
-	mii->menu_id = menu_id;
-	g_idle_add(do_hide_menu_item, mii);
+	g_idle_add(do_hide_menu_item, (gpointer)(long long)menu_id);
 }
 
 void show_menu_item(int menu_id) {
-	MenuItemInfo *mii = malloc(sizeof(MenuItemInfo));
-	mii->menu_id = menu_id;
-	g_idle_add(do_show_menu_item, mii);
+	g_idle_add(do_show_menu_item, (gpointer)(long long)menu_id);
 }
 
 void quit() {
 	g_idle_add(do_quit, NULL);
+}
+
+gboolean do_remove_all_items(gpointer data) {
+        GtkWidget *temp = global_tray_menu;
+	global_tray_menu = gtk_menu_new();
+	app_indicator_set_menu(global_app_indicator, GTK_MENU(global_tray_menu));
+        gtk_widget_destroy(temp);
+	GList* it, *prev = NULL;
+	for(it = global_menu_items; it != NULL; it = it->next) {
+		if (prev != NULL)
+			free(prev);
+		MenuItemNode* item = (MenuItemNode*)(it->data);
+		free(item);
+		prev = it;
+	}
+	if (prev != NULL)
+		free(prev);
+	global_menu_items = NULL;
+}
+
+void remove_all_items(void) {
+	g_idle_add(do_remove_all_items, NULL);
+}
+
+gboolean do_set_info(gpointer data) {
+	InfoData* idata = (InfoData*)data;
+	NotifyNotification *n = notify_notification_new (idata->title, idata->text, "dialog-information");
+
+	notify_notification_show(n, NULL);
+	g_object_unref(G_OBJECT(n));
+
+	free(idata->title);
+	free(idata->text);
+	free(idata);
+}
+
+void setInfo(char *title, char *text) {
+	InfoData* data = malloc(sizeof(InfoData));
+	data->title = title;
+	data->text = text;
+	g_idle_add(do_set_info, (gpointer)data);
 }

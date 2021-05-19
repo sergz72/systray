@@ -929,7 +929,6 @@ func SetTooltip(tooltip string) {
 }
 
 // SetInfo sets the systray info balloon
-// only available on Mac and Windows.
 func SetInfo(appName string, text string, title string, timeout uint32, notificationType uint32) {
 	if err := wt.setInfo(appName, text, title, timeout, notificationType); err != nil {
 		log.Errorf("Unable to set info balloon: %v", err)

@@ -41,14 +41,9 @@ func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes
 }
 
 // SetInfo sets the systray info balloon
-// only available on Mac and Windows.
 func SetInfo(appName string, text string, title string, timeout uint32, notificationType uint32) {
         // show a notification
 	notify.Notify(appName, title, text, "")
-}
-
-func clean() {
-	C.remove_all_items()
 }
 
 func ShowPopover(popover unsafe.Pointer) {

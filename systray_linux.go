@@ -1,10 +1,9 @@
 package systray
 
 /*
-#cgo darwin CFLAGS: -DDARWIN -x objective-c -fobjc-arc
-#cgo darwin LDFLAGS: -framework Cocoa -framework WebKit
+#cgo linux pkg-config: gtk+-3.0 appindicator3-0.1 libnotify
 
-#include "systray.h"
+void setInfo(char *title, char *text);
 */
 import "C"
 
@@ -26,4 +25,10 @@ func (item *MenuItem) SetIcon(iconBytes []byte) {
 // templateIconBytes and regularIconBytes should be the content of .ico for windows and
 // .ico/.jpg/.png for other platforms.
 func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes []byte) {
+}
+
+// SetInfo sets the systray info balloon
+func SetInfo(appName string, text string, title string, timeout uint32, notificationType uint32) {
+        // show a notification
+	C.setInfo(C.CString(title), C.CString(text))
 }
