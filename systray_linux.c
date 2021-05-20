@@ -285,6 +285,7 @@ gboolean do_remove_all_items(gpointer data) {
 	if (prev != NULL)
 		free(prev);
 	global_menu_items = NULL;
+	return FALSE;
 }
 
 void remove_all_items(void) {
@@ -301,6 +302,7 @@ gboolean do_set_info(gpointer data) {
 	free(idata->title);
 	free(idata->text);
 	free(idata);
+	return FALSE;
 }
 
 void setInfo(char *title, char *text) {
